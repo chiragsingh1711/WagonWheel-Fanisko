@@ -9,6 +9,7 @@ import testFragmentShader from "./Shaders/test/fragment.glsl";
  * Base
  */
 // Debug
+
 const gui = new dat.GUI();
 
 // Canvas
@@ -24,6 +25,24 @@ const textureLoader = new THREE.TextureLoader();
 
 const gltfLoader = new GLTFLoader();
 
+// const shaderMaterial = new THREE.RawShaderMaterial({
+//   extensions: {
+//     derivatives: "#extension GL_OES_standard_derivatives : enable",
+//   },
+//   vertexShader: testVertexShader,
+//   fragmentShader: testFragmentShader,
+//   //   wireframe: true,
+//   transparent: true,
+//   side: THREE.DoubleSide,
+//   uniforms: {
+//     uFrequency: { value: new THREE.Vector2(10, 10) },
+//     uTime: { value: 0 },
+//     uDuration: { value: 5.0 },
+//     startPos: { value: new THREE.Vector3(0, 0, 0) },
+//     endPos: { value: new THREE.Vector3(0, 0, 0) },
+//   },
+// });
+
 const button_six = document.querySelector(".six");
 const button_four = document.querySelector(".four");
 
@@ -33,15 +52,7 @@ gltfLoader.load("Cricket.glb", (gltf) => {
   scene.add(gltf.scene);
 });
 
-// const sphereMesh = new THREE.Mesh(
-//   new THREE.SphereGeometry(0.1, 32, 32),
-//   new THREE.MeshBasicMaterial({ color: 0xff0000 })
-// );
-// sphereMesh.scale.set(0.1, 0.1, 0.1);
-// sphereMesh.position.set(-0.125, 0.02, 0.02);
-// scene.add(sphereMesh);
-
-// Create a function CreateSphere that takes in x y z position and returns a sphere mesh
+// ==================== Function to create a 3D Sphere ====================
 const CreateSphere = (x, y, z, color) => {
   const sphereMesh = new THREE.Mesh(
     new THREE.SphereGeometry(0.1, 32, 32),
@@ -51,7 +62,10 @@ const CreateSphere = (x, y, z, color) => {
   sphereMesh.position.set(x, y, z);
   scene.add(sphereMesh);
 };
-
+// ===================== Logic for marking a boundary ======================
+// if Batsman position (j,k) then
+// x = radius*cos(t) + j
+// y = radius*sin(t) + k
 CreateSphere(-0.125, 0.02, 0.02, "red");
 CreateSphere(
   0.65 * Math.cos(Math.PI / 2) - 0.125,
@@ -72,39 +86,57 @@ CreateSphere(
   "green"
 );
 
+// =====================  Sleep Function ======================
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// =====================  Animation of TubeGeometry Function ======================
+async function animate(points, mesh) {
+  for (let i = 2; i < points.length; i++) {
+    let curve = new THREE.CatmullRomCurve3(points.slice(0, i));
+    mesh.geometry = new THREE.TubeGeometry(curve, 64, 0.007, 8, false);
+    await sleep(25);
+  }
+}
+
+// =====================  Function for creating a curve ======================
 const CreateCurve = (x, y, z, run) => {
-  let v1 = new THREE.Vector3(-0.125, 0.02, 0.02);
-  let v2 = new THREE.Vector3(x, y, z);
+  let v1 = new THREE.Vector3(-0.125, 0.02, 0.02); // pos of batsman
+  let v2 = new THREE.Vector3(x, y, z); // endpoint of the ball
   let points = [];
   if (run == 6) {
-    for (let i = 0; i <= 20; i++) {
-      let p = new THREE.Vector3().lerpVectors(v1, v2, i / 20);
-      p.y = p.y + 0.2 * Math.sin((Math.PI * i) / 20);
+    for (let i = 0; i <= 50; i++) {
+      let p = new THREE.Vector3().lerpVectors(v1, v2, i / 50);
+
+      p.y = p.y + 0.2 * Math.sin((Math.PI * i) / 50);
       points.push(p);
     }
-    let curve = new THREE.CatmullRomCurve3(points);
+    let curve = new THREE.CatmullRomCurve3(points.slice(0, 2));
     const geometry = new THREE.TubeGeometry(curve, 64, 0.007, 8, false);
     const material = new THREE.MeshBasicMaterial({ color: "red" });
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
+    animate(points, mesh);
   } else if (run == 4) {
-    for (let i = 0; i <= 20; i++) {
-      let p = new THREE.Vector3().lerpVectors(v1, v2, i / 20);
-      p.y = p.y + 0.01 * Math.sin((Math.PI * i) / 20);
+    for (let i = 0; i <= 50; i++) {
+      let p = new THREE.Vector3().lerpVectors(v1, v2, i / 50);
+      p.y = p.y + 0.01 * Math.sin((Math.PI * i) / 50);
       points.push(p);
     }
-    let curve = new THREE.CatmullRomCurve3(points);
+    console.log(points);
+    let curve = new THREE.CatmullRomCurve3(points.slice(0, 2));
     const geometry = new THREE.TubeGeometry(curve, 64, 0.007, 8, false);
     const material = new THREE.MeshBasicMaterial({ color: "blue" });
+    // shaderMaterial.uniforms.startPos.value = v1;
+    // shaderMaterial.uniforms.endPos.value = v2;
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
+    animate(points, mesh);
   }
 };
 
-// if Batsman position (j,k) then
-// x = radius*cos(t) + j
-// y = radius*sin(t) + k
-
+// =====================  Event Listeners and Calling the CreateCurve Function ======================
 button_six.addEventListener("click", () => {
   CreateCurve(
     0.65 * Math.cos(Math.PI / 2) - 0.125,
@@ -138,35 +170,6 @@ button_four.addEventListener("click", () => {
 /**
  * Test mesh
  */
-// Geometry
-// const geometry = new THREE.PlaneGeometry(1, 1, 32, 32);
-
-// const count = geometry.attributes.position.count;
-// console.log(count);
-// const randoms = new Float32Array(count);
-
-// for (let i = 0; i < count; i++) {
-//   randoms[i] = Math.random();
-// }
-
-// geometry.setAttribute("aRandom", new THREE.BufferAttribute(randoms, 1));
-
-// // Material
-// const material = new THREE.RawShaderMaterial({
-//   vertexShader: testVertexShader,
-//   fragmentShader: testFragmentShader,
-//   //   wireframe: true,
-//   transparent: true,
-//   side: THREE.DoubleSide,
-//   uniforms: {
-//     uFrequency: { value: new THREE.Vector2(10, 10) },
-//     uTime: { value: 0 },
-//   },
-// });
-
-// // Mesh
-// const mesh = new THREE.Mesh(geometry, material);
-// scene.add(mesh);
 
 /**
  * Sizes
@@ -232,7 +235,7 @@ const clock = new THREE.Clock();
 const tick = () => {
   const elapsedTime = clock.getElapsedTime();
 
-  // material.uniforms.uTime.value = elapsedTime;
+  // shaderMaterial.uniforms.uTime.value = elapsedTime;
   // Update controls
   controls.update();
 
